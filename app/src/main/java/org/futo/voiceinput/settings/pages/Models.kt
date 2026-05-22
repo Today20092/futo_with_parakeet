@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -34,6 +35,7 @@ import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
 import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
 import org.futo.voiceinput.settings.ScreenTitle
 import org.futo.voiceinput.settings.ScrollableList
+import org.futo.voiceinput.settings.SettingItem
 import org.futo.voiceinput.settings.SettingRadio
 import org.futo.voiceinput.settings.SettingToggleDataStore
 import org.futo.voiceinput.settings.SettingsViewModel
@@ -45,50 +47,7 @@ import org.futo.voiceinput.startModelDownloadActivity
 
 @Composable
 fun modelsSubtitle(): String? {
-    val (languages, _) = useDataStore(LANGUAGE_TOGGLES)
-    val (useLanguageSpecificModels, _) = useDataStore(USE_LANGUAGE_SPECIFIC_MODELS)
-
-    val (multilingual, _) = useDataStore(ENABLE_MULTILINGUAL)
-
-    val (englishIdxActual, _) = useDataStore(ENGLISH_MODEL_INDEX)
-    val (multilingualIdxActual, _) = useDataStore(MULTILINGUAL_MODEL_INDEX)
-
-    // It doesn't matter what the multilingual model is set to if multilingual is disabled, the model
-    // isn't used anyway. So suppress any text about its value by pretending it's default
-    val multilingualIdx =
-        if (multilingual) multilingualIdxActual else MULTILINGUAL_MODEL_INDEX.default
-
-    val englishIdx = if((!multilingual) || (languages.contains("en") && useLanguageSpecificModels)) {
-        englishIdxActual
-    } else {
-        ENGLISH_MODEL_INDEX.default
-    }
-
-    val totalDiff =
-        (englishIdx - ENGLISH_MODEL_INDEX.default) + (multilingualIdx - MULTILINGUAL_MODEL_INDEX.default)
-    val usePlural =
-        ((englishIdx != ENGLISH_MODEL_INDEX.default) && (multilingualIdx != MULTILINGUAL_MODEL_INDEX.default))
-    return if (totalDiff < 0) {
-        if (usePlural) {
-            stringResource(R.string.using_smaller_models_accuracy_may_be_worse)
-        } else {
-            stringResource(R.string.using_smaller_model_accuracy_may_be_worse)
-        }
-    } else if (totalDiff > 0) {
-        if (usePlural) {
-            stringResource(R.string.using_larger_models_speed_may_be_slower)
-        } else {
-            stringResource(R.string.using_larger_model_speed_may_be_slower)
-        }
-    } else if ((englishIdx != ENGLISH_MODEL_INDEX.default) || (multilingualIdx != MULTILINGUAL_MODEL_INDEX.default)) {
-        if (usePlural) {
-            stringResource(R.string.using_non_default_models)
-        } else {
-            stringResource(R.string.using_non_default_model)
-        }
-    } else {
-        null
-    }
+    return stringResource(R.string.parakeet_model_active_subtitle)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -118,6 +77,21 @@ fun PersonalDictionaryEditor(disabled: Boolean) {
         enabled = !disabled
     )
 
+}
+
+@Composable
+fun ParakeetModelStatus() {
+    ScreenTitle(stringResource(R.string.parakeet_model))
+    SettingItem(
+        title = stringResource(R.string.parakeet_unified_model_name),
+        subtitle = stringResource(R.string.parakeet_unified_model_status),
+        onClick = {},
+        icon = {
+            RadioButton(selected = true, onClick = null, enabled = false)
+        },
+        disabled = false
+    ) { }
+    Tip(stringResource(R.string.parakeet_packaged_model_tip))
 }
 
 @Composable
@@ -180,6 +154,10 @@ fun ModelsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+
+        ParakeetModelStatus()
+
+        Spacer(modifier = Modifier.height(32.dp))
 
         if (useMultilingual) {
             SettingRadio(

@@ -1,95 +1,103 @@
-# FUTO Voice Input
+# FUTO Parakeet Voice Input
 
-FUTO Voice Input is an application that lets you do speech-to-text on Android, integrating with third party keyboards or apps that use the generic speech-to-text APIs.
+This is a personal fork of FUTO Voice Input that keeps the FUTO voice keyboard experience and replaces the speech recognizer backend with NVIDIA Parakeet TDT 0.6B V3 running through ONNX Runtime.
 
-To download the application, visit the [FUTO Voice Input page](https://voiceinput.futo.org/). You can also find the contact there to report issues or suggestions.
+The goal is straightforward: keep the FUTO UI, recording flow, dark theme support, VAD silence stopping, microphone animation, and keyboard switch-back behavior, while using Parakeet as the main recognizer because it is fast and accurate for English speech.
 
-If you have any feedback, issues are welcomed on the [public issue tracker](https://github.com/futo-org/voice-input/issues). Private inquiries are welcomed at the support email listed on the [website](https://voiceinput.futo.org/), or via the Send Feedback button in-app.
+## What Changed
 
-## Status
+- FUTO Voice Input remains the base Android app and UI.
+- The old Whisper/ggml recognition path is bypassed for transcription.
+- A new Kotlin backend layer calls a Rust JNI library.
+- The Rust library loads Parakeet ONNX models through `transcribe-rs` and ONNX Runtime.
+- The Model Options screen shows Parakeet as the active backend.
+- The old English and multilingual model choices are still visible for now, but they are not used by transcription.
 
-Development has largely shifted focus to the [FUTO Keyboard app](https://keyboard.futo.org/), which has voice input built-in. However, FUTO Voice Input will remain available if you prefer to use it with another keyboard.
+## Active Model
 
-## API support
+The active backend is:
 
-The following APIs are supported:
-* `android.speech.action.RECOGNIZE_SPEECH` implicit intent, for apps and some keyboards - this opens the floating window in the center of the screen
-* IME with `voice` subtype mode, for keyboards - this opens on the bottom half of the screen in place of the keyboard
-
-Currently this does not support the SpeechRecognizer API, which few apps seem to use. Support for this is planned in the future.
-
-## Keyboard support
-
-Keyboard support is touched on in the Help section of the app. In short, the following keyboards are supported:
-* [**FUTO Keyboard**](https://keyboard.futo.org/) has FUTO Voice Input built-in; if you want to force it to use the external app you have to disable built-in voice input in its settings
-* [**HeliBoard**](https://github.com/Helium314/HeliBoard)
-* [**FlorisBoard**](https://github.com/florisboard/florisboard) supports it on newer releases
-* [**AnySoftKeyboard**](https://github.com/AnySoftKeyboard/AnySoftKeyboard)
-* [**Unexpected Keyboard**](https://github.com/Julow/Unexpected-Keyboard) (v1.23+)
-* **AOSP Keyboard** available in LineageOS and others
-
-If you're okay with using proprietary keyboards, the following are supported:
-* **Grammarly Keyboard**, which uses the IME
-* **Microsoft SwiftKey**, which uses the implicit intent
-
-Incompatible keyboards:
-* **Gboard** - hardcoded to use Google's voice input, does not support third-party options
-* **Samsung Keyboard** - hardcoded to only allow either Samsung Voice Input, or Google Voice Input
-* **Simple Keyboard** by Raimondas Rimkus - [no voice button](https://github.com/rkkr/simple-keyboard/issues/133)
-* **Simple Keyboard** by Simple Mobile Tools - [no voice button](https://github.com/SimpleMobileTools/Simple-Keyboard/issues/201)
-* **TypeWise** - no voice button [but suggestion filed in 2019](https://suggestions.typewise.app/suggestions/65517/voice-to-text-dictation)
-
-## Language support
-
-FUTO Voice Input is currently based on the OpenAI Whisper model, and could theoretically support all of the languages that OpenAI Whisper supports. However, in practice, the smaller models tend to not perform too good with languages that had fewer training hours. To avoid presenting something worse than nothing, only languages with more than 1,000 training hours are included as options in the UI:
-* English
-* Chinese (currently has some weird behavior between traditional/simplified)
-* German
-* Spanish
-* Russian
-* French
-* Portuguese
-* Korean
-* Japanese
-* Turkish
-* Polish
-* Italian
-* Swedish
-* Dutch
-* Catalan
-* Finnish
-* Indonesian
-
-Language support and accuracy may expand in the future with better optimization and fine-tuned models. Feedback is welcomed about language-related issues or general language accuracy.
-
-## Development
-
-You can develop this app by opening it in Android Studio. Otherwise, you can use Gradle to build the app like so:
-```bash
-./gradlew assembleStandaloneRelease
+```text
+Unified Parakeet TDT 0.6B V3
 ```
 
-There are four build flavors:
-* `dev` - for development, includes Play Store billing and all payment methods, auto-update, etc
-* `playStore` - Play Store build, does not include auto-update and only includes Play Store billing
-* `standalone` - does not include Play Store billing library, includes auto-update
-* `fDroid` - does not include Play Store billing nor auto-update
+The build downloads the ONNX model assets from:
 
-Some prebuilt binaries are included in the `libs` directory to make the build faster, there are also instructions to build them yourself.
+```text
+https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx
+```
 
-## License
+For the current sideload/debug build, the model files are packaged into the APK. There is no separate in-app Parakeet download step.
 
-This code is currently licensed under the [FUTO Source First License 1.0](LICENSE.md)
+## Building Locally
 
-## Credits
+Required tools:
 
-The microphone icon was taken from [Feather Icons](https://feathericons.com/), an open-source icon pack authored by Cole Bemis.
+- Android Studio or Android SDK command line tools
+- JDK 17 or newer
+- Android SDK platform 35
+- Android NDK `28.2.13676358`
+- Rust with `aarch64-linux-android` target
+- `cargo-ndk`
 
-Thanks to the following projects for making this possible:
-* OpenAI - [OpenAI Whisper](https://github.com/openai/whisper/)
-* Georgi Gerganov - [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
-* TensorFlow Authors - [TensorFlow Lite](https://mvnrepository.com/artifact/org.tensorflow/tensorflow-lite) (tflite was used in the past, it's no longer used)
-* Max-Planck-Society - [PocketFFT](https://gitlab.mpcdf.mpg.de/mtr/pocketfft/-/blob/master/LICENSE.md)
-* The WebRTC project authors - [WebRTC VAD](https://github.com/abb128/android-vad/blob/main/vad/src/main/jni/webrtc_vad/LICENSE)
-* Georgiy Konovalov - [android-vad](https://github.com/abb128/android-vad)
-* Other app dependencies, listed in app/build.gradle
+Install the Rust target and cargo helper:
+
+```powershell
+rustup target add aarch64-linux-android
+cargo install cargo-ndk
+```
+
+Create `local.properties` if Android Studio has not already created it:
+
+```properties
+sdk.dir=C\:\\Users\\User\\AppData\\Local\\Android\\Sdk
+```
+
+Build the debug APK:
+
+```powershell
+.\gradlew.bat :app:assembleDevDebug
+```
+
+The APK is written to:
+
+```text
+app/build/outputs/apk/dev/debug/app-dev-debug.apk
+```
+
+## GitHub Releases
+
+This repository includes a GitHub Actions workflow that builds an APK.
+
+To create a release:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+GitHub Actions will:
+
+- install Android build components
+- install Rust and `cargo-ndk`
+- download the Parakeet model assets during Gradle build
+- build `:app:assembleDevDebug`
+- attach the APK to the GitHub Release
+
+You can also run the workflow manually from the Actions tab. Manual runs upload the APK as a workflow artifact but do not create a GitHub Release unless the run is for a tag.
+
+## Notes
+
+- First supported ABI is `arm64-v8a`.
+- This is intended for sideloading and personal testing.
+- The APK is large because it includes the Parakeet ONNX model files.
+- Parakeet currently returns a final transcript after recording stops; live partial transcripts are not implemented.
+- The app is offline after installation.
+
+## Attribution And License
+
+This fork is based on FUTO Voice Input and keeps FUTO's license and notices. FUTO Voice Input is licensed under the FUTO Source First License. Review [LICENSE.md](LICENSE.md) before distributing modified builds.
+
+Parakeet model assets come from `istupakov/parakeet-tdt-0.6b-v3-onnx`, an ONNX conversion of NVIDIA Parakeet TDT 0.6B V3, licensed CC-BY-4.0.
+
+This fork is not affiliated with or endorsed by FUTO.

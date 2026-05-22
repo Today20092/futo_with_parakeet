@@ -1,54 +1,46 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-# Gradle files
+# Gradle / Android builds
 .gradle/
+.kotlin/
 build/
-
-# Local configuration file (sdk path, etc)
-local.properties
-
-# Log/OS Files
-*.log
-
-# Android Studio generated files and folders
+**/build/
 captures/
 .externalNativeBuild/
 .cxx/
-*.apk
-output.json
 
-# IntelliJ
+# Android Studio / IntelliJ local state
 *.iml
 .idea/
-misc.xml
-deploymentTargetDropDown.xml
-render.experimental.xml
 
-# Keystore files
-*.jks
-*.keystore
-
-# Google Services (e.g. APIs or Firebase)
-google-services.json
-
-# Android Profiling
-*.hprof
-
-
-app/release/*.apk
-app/release/*.zip
+# Local machine configuration
+local.properties
 keystore.properties
 crashreporting.properties
+
+# Build outputs
+*.apk
+*.ap_
+*.aab
+*.aar
+*.dex
+*.class
+output.json
+app/release/
+
+# Native build outputs
+app/src/main/jniLibs/
+parakeet-native/target/
+
+# Downloaded model assets are fetched by Gradle during builds.
+app/src/main/assets/parakeet-tdt-0.6b-v3-int8/
+
+# Rust local caches and editor state
+**/*.rs.bk
+
+# Logs / profiling / OS files
+*.log
+*.hprof
+.DS_Store
+Thumbs.db
+
+# Keep Gradle wrapper files in source control
+!gradle/wrapper/gradle-wrapper.jar

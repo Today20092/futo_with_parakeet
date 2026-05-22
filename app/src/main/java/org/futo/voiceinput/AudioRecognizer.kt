@@ -15,32 +15,22 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.lifecycle.LifecycleCoroutineScope
-import com.konovalov.vad.Vad
-import com.konovalov.vad.config.FrameSize
-import com.konovalov.vad.config.Mode
-import com.konovalov.vad.config.Model
-import com.konovalov.vad.config.SampleRate
+import com.konovalov.vad.webrtc.VadWebRTC
+import com.konovalov.vad.webrtc.config.FrameSize
+import com.konovalov.vad.webrtc.config.Mode
+import com.konovalov.vad.webrtc.config.SampleRate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
-import org.futo.voiceinput.ggml.DecodingMode
 import org.futo.voiceinput.ml.RunState
-import org.futo.voiceinput.ml.WhisperModelWrapper
-import org.futo.voiceinput.settings.BEAM_SEARCH
-import org.futo.voiceinput.settings.DISALLOW_SYMBOLS
 import org.futo.voiceinput.settings.ENABLE_30S_LIMIT
-import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
-import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
 import org.futo.voiceinput.settings.IS_VAD_ENABLED
-import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
-import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
-import org.futo.voiceinput.settings.PERSONAL_DICTIONARY
-import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.getSetting
-import java.io.IOException
+import org.futo.voiceinput.parakeet.ParakeetBackend
+import org.futo.voiceinput.parakeet.SpeechBackend
 import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 import kotlin.math.min
@@ -63,7 +53,7 @@ abstract class AudioRecognizer {
         return isRecording
     }
 
-    private var model: WhisperModelWrapper? = null
+    private var backend: SpeechBackend? = null
 
     private var floatSamples: FloatBuffer = FloatBuffer.allocate(16000 * 30)
     private var recorderJob: Job? = null
@@ -137,8 +127,8 @@ abstract class AudioRecognizer {
 
         lifecycleScope.launch {
             modelJob?.join()
-            model?.close()
-            model = null
+            backend?.close()
+            backend = null
         }
     }
 
@@ -185,70 +175,10 @@ abstract class AudioRecognizer {
         }
     }
 
-    private suspend fun tryLoadModelOrCancel(primaryModel: ModelData, secondaryModelP: ModelData?) {
-        val secondaryModel = if(context.getSetting(USE_LANGUAGE_SPECIFIC_MODELS)) { secondaryModelP } else { null }
-        try {
-            model = WhisperModelWrapper(
-                context,
-                primaryModel,
-                secondaryModel,
-                context.getSetting(DISALLOW_SYMBOLS),
-                context.getSetting(LANGUAGE_TOGGLES),
-                onStatusUpdate = {
-                    decodingStatus(it)
-                },
-                onPartialDecode = {
-                    lifecycleScope.launch {
-                        withContext(Dispatchers.Main) {
-                            partialResult(it)
-                        }
-                    }
-                }
-            )
-        } catch (e: IOException) {
-            context.startModelDownloadActivity(
-                listOf(primaryModel).let {
-                    if (secondaryModel != null) it + secondaryModel
-                    else it
-                }
-            )
-            cancelRecognizer()
-        }
-    }
-
     private suspend fun loadModelInner() {
         try {
-            val englishModelIdx = context.getSetting(ENGLISH_MODEL_INDEX)
-            val multilingualModelIdx = context.getSetting(MULTILINGUAL_MODEL_INDEX)
-            val languages = context.getSetting(LANGUAGE_TOGGLES)
-            val isMultilingual = context.getSetting(ENABLE_MULTILINGUAL)
-
-            if (forcedLanguage != null) {
-                tryLoadModelOrCancel(
-                    if (forcedLanguage == "en") {
-                        ENGLISH_MODELS[englishModelIdx]
-                    } else {
-                        MULTILINGUAL_MODELS[multilingualModelIdx]
-                    },
-
-                    null
-                )
-            } else {
-                if (isMultilingual) {
-                    tryLoadModelOrCancel(
-                        MULTILINGUAL_MODELS[multilingualModelIdx],
-                        if (languages.contains("en")) {
-                            ENGLISH_MODELS[englishModelIdx]
-                        } else {
-                            null
-                        }
-                    )
-                } else {
-                    tryLoadModelOrCancel(
-                        ENGLISH_MODELS[englishModelIdx],
-                        null
-                    )
-                }
+            backend = ParakeetBackend().also {
+                it.load(context)
             }
         } catch(e: OutOfMemoryError) {
             decodingStatus(RunState.OOMError)
@@ -264,7 +194,7 @@ abstract class AudioRecognizer {
     }
 
     private fun loadModel() {
-        if (model == null) {
+        if (backend == null) {
             loadModelJob = lifecycleScope.launch {
                 withContext(Dispatchers.Default) {
                     loadModelInner()
@@ -355,14 +285,13 @@ abstract class AudioRecognizer {
                     var anyNoiseAtAll = false
                     var isMicBlocked = false
 
-                    val vad = Vad.builder()
-                        .setModel(Model.WEB_RTC_GMM)
-                        .setMode(Mode.VERY_AGGRESSIVE)
-                        .setFrameSize(FrameSize.FRAME_SIZE_480)
-                        .setSampleRate(SampleRate.SAMPLE_RATE_16K)
-                        .setSpeechDurationMs(150)
-                        .setSilenceDurationMs(300)
-                        .build()
+                    val vad = VadWebRTC(
+                        sampleRate = SampleRate.SAMPLE_RATE_16K,
+                        frameSize = FrameSize.FRAME_SIZE_480,
+                        mode = Mode.VERY_AGGRESSIVE,
+                        speechDurationMs = 150,
+                        silenceDurationMs = 300
+                    )
 
                     val shouldUseVad = context.getSetting(IS_VAD_ENABLED)
                     
@@ -504,7 +433,7 @@ abstract class AudioRecognizer {
         if(loadModelJob != null && loadModelJob!!.isActive) {
             println("Model was not finished loading...")
             loadModelJob!!.join()
-        }else if(model == null) {
+        }else if(backend == null) {
             println("Model was null by the time runModel was called...")
             loadModel()
             loadModelJob!!.join()
@@ -512,16 +441,13 @@ abstract class AudioRecognizer {
 
         val floatArray = floatSamples.array().sliceArray(0 until floatSamples.position())
 
-        val words = context.getSetting(PERSONAL_DICTIONARY)
-        val decodingMode = if(context.getSetting(BEAM_SEARCH)){ DecodingMode.BeamSearch5 } else { DecodingMode.Greedy }
-
         yield()
         val text = try {
-            model!!.run(floatArray, words, forcedLanguage, decodingMode)
+            backend!!.transcribe(floatArray)
         } catch(e: OutOfMemoryError) {
             decodingStatus(RunState.OOMError)
-            model!!.close()
-            model = null
+            backend!!.close()
+            backend = null
             loadModelJob = null
 
             for(i in 0 until 2) {
@@ -535,8 +461,8 @@ abstract class AudioRecognizer {
             return runModel()
         }
 
-        model!!.close()
-        model = null
+        backend!!.close()
+        backend = null
 
         lifecycleScope.launch {
             withContext(Dispatchers.Main) {
