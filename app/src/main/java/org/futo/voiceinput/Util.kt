@@ -8,6 +8,7 @@ import android.net.Uri
 import android.widget.Toast
 import org.futo.voiceinput.downloader.DownloadActivity
 import org.futo.voiceinput.settings.ENGLISH_MODEL_INDEX
+import org.futo.voiceinput.settings.ENABLE_MULTILINGUAL
 import org.futo.voiceinput.settings.LANGUAGE_TOGGLES
 import org.futo.voiceinput.settings.MANUALLY_SELECT_LANGUAGE
 import org.futo.voiceinput.settings.MULTILINGUAL_MODEL_INDEX
@@ -414,8 +415,13 @@ suspend fun Context.getLanguageModelMap(): Map<String, ModelData> {
     val modelIdx = getSetting(MULTILINGUAL_MODEL_INDEX)
     val englishModelIdx = getSetting(ENGLISH_MODEL_INDEX)
     val useLanguageSpecificModels = getSetting(USE_LANGUAGE_SPECIFIC_MODELS)
+    val isMultilingual = getSetting(ENABLE_MULTILINGUAL)
     val manuallySelectLanguage = getSetting(MANUALLY_SELECT_LANGUAGE)
     val languages = getSetting(LANGUAGE_TOGGLES)
+
+    if (!isMultilingual) {
+        return mapOf("en" to ENGLISH_MODELS[englishModelIdx])
+    }
 
     val map = hashMapOf<String, ModelData>()
     languages.forEach {
@@ -440,6 +446,7 @@ suspend fun Context.selectedWhisperModelsForCurrentSettings(forceLanguage: Strin
     val multilingualModelIdx = getSetting(MULTILINGUAL_MODEL_INDEX)
     val languages = getSetting(LANGUAGE_TOGGLES)
     val useLanguageSpecificModels = getSetting(USE_LANGUAGE_SPECIFIC_MODELS)
+    val isMultilingual = getSetting(ENABLE_MULTILINGUAL)
 
     val selected = if (forceLanguage != null) {
         listOf(
@@ -449,6 +456,8 @@ suspend fun Context.selectedWhisperModelsForCurrentSettings(forceLanguage: Strin
                 MULTILINGUAL_MODELS[multilingualModelIdx]
             }
         )
+    } else if (!isMultilingual) {
+        listOf(ENGLISH_MODELS[englishModelIdx])
     } else {
         val mappedModels = getLanguageModelMap().values.distinct()
         val primaryModel = mappedModels.firstOrNull { it in MULTILINGUAL_MODELS }
@@ -458,6 +467,7 @@ suspend fun Context.selectedWhisperModelsForCurrentSettings(forceLanguage: Strin
     }
 
     val includeEnglishFallback = forceLanguage == null &&
+            isMultilingual &&
             languages.contains("en") &&
             useLanguageSpecificModels &&
             selected.any { it in MULTILINGUAL_MODELS }

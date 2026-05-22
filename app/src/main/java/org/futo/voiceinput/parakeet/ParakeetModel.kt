@@ -72,7 +72,7 @@ fun Context.parakeetModelDir(): File = File(filesDir, ParakeetModel.directoryNam
 fun Context.parakeetModelMarker(): File =
     File(parakeetModelDir(), ParakeetModel.completionMarker)
 
-fun Context.isParakeetModelDownloaded(): Boolean {
+fun Context.isParakeetModelDownloaded(verifyHashes: Boolean = false): Boolean {
     if (BuildConfig.BUNDLE_PARAKEET_MODEL) return true
 
     val marker = parakeetModelMarker()
@@ -83,7 +83,7 @@ fun Context.isParakeetModelDownloaded(): Boolean {
         .filter { it.required }
         .all { model ->
             val file = File(modelDir, model.name)
-            file.exists() && (model.sha256 == null || sha256(file) == model.sha256)
+            file.exists() && (!verifyHashes || model.sha256 == null || sha256(file) == model.sha256)
         }
 
     if (!isValid) {
