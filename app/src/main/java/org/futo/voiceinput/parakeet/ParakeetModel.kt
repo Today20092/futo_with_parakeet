@@ -24,11 +24,11 @@ object ParakeetModel {
     const val directoryName = "parakeet-unified-en-0.6b-onnx"
     const val completionMarker = ".download_complete"
     private const val exportedAssetBaseUrl =
-        "https://huggingface.co/futo-org/parakeet-unified-en-0.6b-onnx/resolve/main"
+        "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main"
 
     // Fill these hashes from tools/parakeet_export/checksums.sha256 after the
-    // unified ONNX export is validated and hosted. Missing hashes are accepted
-    // for local/unhosted exports.
+    // ONNX export is validated and hosted. Missing hashes are accepted for
+    // local/unhosted exports.
     val files = listOf(
         ParakeetModelFile(
             name = "config.json",
@@ -52,7 +52,7 @@ object ParakeetModel {
         ),
         ParakeetModelFile(
             name = "preprocessor.onnx",
-            url = "$exportedAssetBaseUrl/preprocessor.onnx?download=true",
+            url = "$exportedAssetBaseUrl/nemo128.onnx?download=true",
             sha256 = null
         )
     )

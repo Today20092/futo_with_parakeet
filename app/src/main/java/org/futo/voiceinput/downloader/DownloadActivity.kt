@@ -415,7 +415,7 @@ class DownloadActivity : ComponentActivity() {
     }
 
     private fun isValidDownloadedFile(file: File, expectedSha256: String?): Boolean {
-        return file.exists() && (expectedSha256 == null || sha256(file) == expectedSha256)
+        return file.exists() && file.length() > 0L && (expectedSha256 == null || sha256(file) == expectedSha256)
     }
 
     private fun isValidTargetFile(model: ModelInfo): Boolean {

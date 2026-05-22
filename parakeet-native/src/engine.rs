@@ -32,7 +32,7 @@ pub fn ensure_loaded(env: &mut JNIEnv, context: &JObject) -> Result<(), String> 
             &model_dir,
             ParakeetModelParams {
                 quantization: QuantizationType::Int8,
-                architecture: ParakeetArchitecture::RnntUnified,
+                architecture: ParakeetArchitecture::Tdt,
             },
         )
         .map_err(|e| e.to_string())?;

@@ -327,10 +327,16 @@ tasks.register('cargoNdkBuildParakeet', Exec) {
 
 class ModelFile {
     String name
+    String remoteName
     String sha256
 
     ModelFile(String name, String sha256) {
+        this(name, name, sha256)
+    }
+
+    ModelFile(String name, String remoteName, String sha256) {
         this.name = name
+        this.remoteName = remoteName
         this.sha256 = sha256
     }
 }
@@ -341,10 +347,10 @@ def parakeetModelFiles = [
         new ModelFile('vocab.txt', ''),
         new ModelFile('encoder-model.int8.onnx', ''),
         new ModelFile('decoder_joint-model.int8.onnx', ''),
-        new ModelFile('preprocessor.onnx', '')
+        new ModelFile('preprocessor.onnx', 'nemo128.onnx', '')
 ]
 
-def huggingFaceRepo = 'https://huggingface.co/futo-org/parakeet-unified-en-0.6b-onnx/resolve/main'
+def huggingFaceRepo = 'https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/resolve/main'
 String sha256(File file) {
     def digest = MessageDigest.getInstance('SHA-256')
     file.withInputStream { input ->
@@ -381,7 +387,7 @@ tasks.register('downloadParakeetModels') {
 
             if (!destFile.exists()) {
                 println "  Downloading ${model.name}"
-                def downloadUrl = "${huggingFaceRepo}/${model.name}?download=true"
+                def downloadUrl = "${huggingFaceRepo}/${model.remoteName}?download=true"
                 def curlCommand = org.gradle.internal.os.OperatingSystem.current().isWindows() ? 'curl.exe' : 'curl'
                 exec {
                     commandLine curlCommand, '-L', '-f', '-o', destFile.absolutePath, downloadUrl
