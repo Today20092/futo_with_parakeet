@@ -49,11 +49,15 @@ import org.futo.voiceinput.settings.Tip
 import org.futo.voiceinput.settings.USE_LANGUAGE_SPECIFIC_MODELS
 import org.futo.voiceinput.settings.getSettingBlocking
 import org.futo.voiceinput.settings.useDataStore
-import org.futo.voiceinput.startModelDownloadActivity
 
 @Composable
 fun modelsSubtitle(): String? {
-    return stringResource(R.string.parakeet_model_active_subtitle)
+    val context = LocalContext.current
+    return if (context.isParakeetModelDownloaded()) {
+        stringResource(R.string.parakeet_model_active_subtitle)
+    } else {
+        stringResource(R.string.parakeet_model_download_required)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -133,35 +137,13 @@ fun ModelsScreen(
 ) {
     val (useMultilingual, _) = useDataStore(ENABLE_MULTILINGUAL)
 
-    val englishModelIndex = useDataStore(ENGLISH_MODEL_INDEX)
-    val multilingualModelIndex = useDataStore(MULTILINGUAL_MODEL_INDEX)
-
     val (languages, _) = useDataStore(LANGUAGE_TOGGLES)
     val (useLanguageSpecificModels, _) = useDataStore(USE_LANGUAGE_SPECIFIC_MODELS)
 
-    val context = LocalContext.current
     val needsUpdate = NeedsMigration()
 
     val wasMigrated = useDataStore(setting = MODELS_MIGRATED)
     val dismissMigrationTip = useDataStore(setting = DISMISS_MIGRATION_TIP)
-
-    val launchDownloaderIfNecessary = {
-        if (useMultilingual) {
-            context.startModelDownloadActivity(
-                listOf(
-                    ENGLISH_MODELS[englishModelIndex.value],
-                    MULTILINGUAL_MODELS[multilingualModelIndex.value]
-                )
-            )
-        } else {
-            context.startModelDownloadActivity(listOf(ENGLISH_MODELS[englishModelIndex.value]))
-        }
-    }
-
-    LaunchedEffect(listOf(useMultilingual, englishModelIndex.value, multilingualModelIndex.value)) {
-        launchDownloaderIfNecessary()
-    }
-
 
     ScrollableList {
         ScreenTitle(stringResource(R.string.model_options), showBack = true, navController = navController)
